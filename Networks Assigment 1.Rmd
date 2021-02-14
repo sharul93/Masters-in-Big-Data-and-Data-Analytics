@@ -1,0 +1,182 @@
+---
+title: "Assignment"
+output: html_notebook
+---
+
+#On this first assignment, applying the basic functions of the Igraph package is required. The following datasets are #going to be #used:
+
+#* Actors dataset - undirected graph - : For the 2005 Graph Drawing conference a data set was provided of the IMDB #movie database. 
+#We will use a reduced version of this dataset, which derived all actor-actor collaboration edges where #the actors co-starred in at 
+#least 2 movies together between 1995 and 2004. 
+
+#You have to complete the code chunks in this document but also analyze the results, extract insights and answer the #short #questions. Fill the CSV attached with your answers, sometimes just the number is enough, some others just a #small sentence. Remember #to change the header with your email.
+
+#In your submission please upload both the R Markdown and the CSV with the solutions.
+
+# Loading data
+
+#In this section, the goal is loading the datasets given, building the graph and analyzing basics metrics. Include the #edge or node attributes you consider.
+
+#Describe the values provided by summary function on the graph object.
+#*1) How many nodes are there?*
+#*2) How many edges are there?*
+
+```{r}
+getwd()
+
+library(readr)
+library(ggplot2)
+library(igraph)
+
+edges <- read_tsv("imdb_actor_edges.tsv")
+
+dim(edges)
+head(edges)
+class(edges)
+#summary(edges)
+
+key <- read_tsv("imdb_actors_key.tsv")
+
+dim(key)
+head(key)
+class(key)
+#summary(key)
+
+g <- graph_from_data_frame(d = edges, directed = FALSE, vertices = key)
+
+vcount(g)
+ecount(g)
+```
+# Degree distribution
+
+#Analyse the degree distribution. Compute the total degree distribution.
+#*3) How does this distributions look like?*
+#*4) What is the maximum degree?*
+#*5) What is the minimum degree?*
+
+```{r}
+is.directed(g)
+summary(g)
+
+deg <- degree(g)
+
+deg_dist <- degree.distribution(g)
+
+plot(deg_dist,
+     main = "degree distribution",
+     xlab = "distribution",
+     ylab = "frequency",
+     col = "#296d98")
+
+max(deg)
+min(deg)
+
+```
+# Network Diameter and Average Path Length
+#*6) What is the diameter of the graph?*
+#*7) What is the avg path length of the graph?*
+
+```{r}
+diameter(g, directed = FALSE)
+
+average.path.length(g, directed = FALSE)
+
+```
+
+# Node importance: Centrality measures
+
+#Obtain the distribution of the number of movies made by an actor and the number of genres in which an actor starred in. It may be #useful to analyze and discuss the results to be obtained in the following exercises.
+
+```{r}
+V(g)
+hist(V(g)$movies_95_04,
+    main = "movies per actor",
+    xlab = "number of movies",
+    ylab = "frequency",
+    labels = TRUE,
+    col = "#296d98")
+
+```
+
+#Obtain three vectors with the degree, betweenness and closeness for each vertex of the actors' graph.
+
+```{r}
+deg <- degree(g)
+head(deg, 5)
+
+btw <- betweenness(g, v = V(g), normalized = TRUE)
+head(btw, 5)
+
+cl  <- closeness(g, v = V(g), normalized = TRUE)
+head(cl, 5)
+
+```
+
+#Obtain the list of the 20 actors with the largest degree centrality. It can be useful to show a list with the degree, the name of #the actor, the number of movies, the main genre, and the number of genres in which the actor has participated.
+
+#*8) Who is the actor with highest degree centrality?*
+#*9) How do you explain the high degree of the top-20 list??*
+
+```{r}
+library(sqldf)
+deg_cent<- sort(deg,decreasing=TRUE)[1:20]
+
+deg_df <- as.data.frame(deg_cent)
+deg_df <- cbind(Name=rownames(deg_df),deg_df)
+
+deg_df2 <- sqldf("select a.*, b.id, b.movies_95_04, b.main_genre, b.genres from deg_df a left outer join key b on a.Name=b.name")
+
+deg_df2
+
+```
+
+#Obtain the list of the 20 actors with the largest betweenness centrality. Show a list with the betweenness, the name of the actor, #the number of movies, the main genre, and the number of genres in which the actor has participated.
+
+#*10) Who is the actor with highest betweennes?*
+#*11) How do you explain the high betweenness of the top-20 list?*
+
+```{r}
+btw_cent <- sort(btw,decreasing=TRUE)[1:20]
+
+btw_df <- as.data.frame(btw_cent)
+btw_df <- cbind(Name=rownames(btw_df),btw_df)
+
+btw_df2 <- sqldf("select a.*, b.id, b.movies_95_04, b.main_genre, b.genres from btw_df a left outer join key b on a.Name=b.name")
+
+btw_df2
+
+```
+
+#Obtain the list of the 20 actors with the largest closeness centrality. Show a list with the closeness the name of the actor, the #number of movies, the main genre, and the number of genres in which the actor has participated.
+
+#*12) Who is the actor with highest closeness centrality?*
+#*13) How do you explain the high closeness of the top-20 list? *
+
+```{r}
+cl_cent <- sort(cl,decreasing=TRUE)[1:20]
+
+cl_df <- as.data.frame(cl_cent)
+cl_df <- cbind(Name=rownames(cl_df),cl_df)
+
+cl_df2 <- sqldf("select a.*, b.id, b.movies_95_04, b.main_genre, b.genres from cl_df a left outer join key b on a.Name=b.name")
+
+cl_df2
+
+```
+
+#Network Models (Optional)
+#Explore the Erdös-Renyi model and compare its structural properties to those of real-world networks (actors):
+
+```{r}
+g_er <- erdos.renyi.game(17577,287074, type = "gnm")
+
+plot(g_er, vertex.label= key, edge.arrow.size=0.02,vertex.size = 0.5, xlab = "Random Network: G(N,L) model")
+
+```
+
+* Degree distribution  P(k)
+* Network Diameter and Average Path Length
+* (Global and Local) Clustering Coefficient
+
+#Comunity detection (Optional)
+#Use any community detection algorithm for the actors' network and discuss whether the communities found make sense #according to the #vertex labels.
